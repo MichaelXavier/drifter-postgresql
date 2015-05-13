@@ -1,0 +1,3 @@
+[submodule "deps/drifter"]
+	path = deps/drifter
+	url = git@github.com:MichaelXavier/drifter.git
