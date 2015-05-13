@@ -9,6 +9,9 @@ maintainer:          michael@michaelxavier.net
 category:            Database
 build-type:          Simple
 cabal-version:       >=1.10
+extra-source-files:
+  README.md
+  changelog.md
 
 flag lib-Werror
   default: False
