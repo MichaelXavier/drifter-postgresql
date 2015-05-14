@@ -20,8 +20,7 @@ flag lib-Werror
 library
   exposed-modules:   Drifter.PostgreSQL
   build-depends:       base >=4.6 && <4.8
-                     -- TODO: loosen bounds
-                     , postgresql-simple >= 0.4.10.0 && < 0.5
+                     , postgresql-simple >= 0.2 && < 0.5
                      , drifter >= 0.1.0.1 && < 0.2
                      , time
                      , either
