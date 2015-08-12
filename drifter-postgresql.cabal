@@ -21,7 +21,7 @@ library
   exposed-modules:   Drifter.PostgreSQL
   build-depends:       base >=4.6 && <4.8
                      , postgresql-simple >= 0.2 && < 0.5
-                     , drifter >= 0.1.0.1 && < 0.2
+                     , drifter >= 0.2 && < 0.3
                      , time
                      , either
                      , mtl

@@ -12,7 +12,7 @@ import           Data.IORef
 import           Data.Text                        (Text)
 import           Database.PostgreSQL.Simple
 import           Database.PostgreSQL.Simple.SqlQQ
-import           Drifter.Types
+import           Drifter
 import           Test.Tasty
 import           Test.Tasty.HUnit
 -------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ main = defaultMain $ testGroup "drifter-postgresql"
 
 -------------------------------------------------------------------------------
 c1 :: Change PGMigration
-c1 = Change "c1" (Just "c1 migration") [] meth
+c1 = Change (ChangeName "c1") (Just "c1 migration") [] meth
   where
     meth = MigrationQuery q
     q = [sql|
@@ -63,7 +63,7 @@ c1 = Change "c1" (Just "c1 migration") [] meth
 
 -------------------------------------------------------------------------------
 c2 :: IORef Int -> Change PGMigration
-c2 ref = Change "c2" (Just "c2 migration") [changeName c1] meth
+c2 ref = Change (ChangeName "c2") (Just "c2 migration") [changeName c1] meth
   where
     meth = MigrationCode (\_ -> Right <$> modifyIORef' ref succ)
 

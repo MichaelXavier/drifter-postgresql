@@ -10,6 +10,8 @@ module Drifter.PostgreSQL
     , Method(..)
     , DBConnection(..)
     , ChangeHistory(..)
+    , runMigrations
+    , getChangeHistory
     ) where
 
 -------------------------------------------------------------------------------
@@ -23,7 +25,7 @@ import           Database.PostgreSQL.Simple
 import           Database.PostgreSQL.Simple.FromField
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.SqlQQ
-import           Drifter.Types
+import           Drifter
 -------------------------------------------------------------------------------
 
 
@@ -38,12 +40,9 @@ data instance DBConnection PGMigration = DBConnection Connection
 
 
 instance Drifter PGMigration where
-  migrate (DBConnection c) cs = do
-    void $ execute_ c bootstrapQ
-    withTransaction c $ do
-      hist <- query_ c changeHistoryQ
-      start <- findNext hist cs
-      runEitherT $ mapM_ (migrateChange c) start
+  migrateSingle (DBConnection conn) change = do
+    void $ execute_ conn bootstrapQ
+    runEitherT $ migrateChange conn change
 
 
 -------------------------------------------------------------------------------
@@ -54,7 +53,7 @@ newtype ChangeId = ChangeId Int deriving (Eq, Ord, Show, FromField)
 
 data ChangeHistory = ChangeHistory {
       histId          :: ChangeId
-    , histName        :: Name
+    , histName        :: ChangeName
     , histDescription :: Maybe Description
     , histTime        :: UTCTime
     } deriving (Show)
@@ -69,7 +68,10 @@ instance Ord ChangeHistory where
 
 
 instance FromRow ChangeHistory where
-    fromRow = ChangeHistory <$> field <*> field <*> field <*> field
+    fromRow = ChangeHistory <$> field
+                            <*> (ChangeName <$> field)
+                            <*> field
+                            <*> field
 
 
 -------------------------------------------------------------------------------
@@ -137,7 +139,7 @@ logChange c Change{..} = do
     now <- lift getCurrentTime
     void $ EitherT $ (Right <$> go now) `catches` errorHandlers
   where
-    go now = execute c insertLogQ (changeName, changeDescription, now)
+    go now = execute c insertLogQ (changeNameText changeName, changeDescription, now)
 
 
 -------------------------------------------------------------------------------
@@ -147,3 +149,23 @@ errorHandlers = [ Handler (\(ex::SqlError) -> return $ Left $ show ex)
                 , Handler (\(ex::ResultError) -> return $ Left $ show ex)
                 , Handler (\(ex::QueryError) -> return $ Left $ show ex)
                 ]
+
+
+-------------------------------------------------------------------------------
+-- | Takes the list of all migrations, removes the ones that have
+-- already run and runs them
+runMigrations :: Connection -> [Change PGMigration] -> IO (Either String ())
+runMigrations conn changes = do
+  hist <- getChangeHistory conn
+  remainingChanges <- findNext hist changes
+  begin conn
+  res <- migrate (DBConnection conn) remainingChanges `onException` rollback conn
+  case res of
+    Right _ -> commit conn
+    Left _ -> rollback conn
+  return res
+
+
+-------------------------------------------------------------------------------
+getChangeHistory :: Connection -> IO [ChangeHistory]
+getChangeHistory conn = query_ conn changeHistoryQ
