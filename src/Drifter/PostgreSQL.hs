@@ -41,7 +41,6 @@ data instance DBConnection PGMigration = DBConnection Connection
 
 instance Drifter PGMigration where
   migrateSingle (DBConnection conn) change = do
-    void $ execute_ conn bootstrapQ
     runEitherT $ migrateChange conn change
 
 
@@ -153,9 +152,10 @@ errorHandlers = [ Handler (\(ex::SqlError) -> return $ Left $ show ex)
 
 -------------------------------------------------------------------------------
 -- | Takes the list of all migrations, removes the ones that have
--- already run and runs them
+-- already run and runs them. Use this instead of 'migrate'.
 runMigrations :: Connection -> [Change PGMigration] -> IO (Either String ())
 runMigrations conn changes = do
+  void $ execute_ conn bootstrapQ
   hist <- getChangeHistory conn
   remainingChanges <- findNext hist changes
   begin conn

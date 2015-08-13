@@ -26,7 +26,7 @@ main = defaultMain $ testGroup "drifter-postgresql"
     withResource setup teardown $ \getConn -> testCase "migrations" $ do
        c <- getConn
        c2Calls <- newIORef 0
-       let migrate' = migrate (DBConnection c)
+       let migrate' = runMigrations c
        res <- migrate' [c1]
        res @?= Right ()
        rows <- query_ c "SELECT x FROM c1;"
