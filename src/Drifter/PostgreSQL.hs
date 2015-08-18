@@ -33,7 +33,9 @@ data PGMigration
 
 
 data instance Method PGMigration = MigrationQuery Query
+                                 -- ^ Run a query against the database
                                  | MigrationCode (Connection -> IO (Either String ()))
+                                 -- ^ Run any arbitrary IO code
 
 
 data instance DBConnection PGMigration = DBConnection Connection
@@ -167,5 +169,7 @@ runMigrations conn changes = do
 
 
 -------------------------------------------------------------------------------
+-- | Check the schema_migrations table for all the migrations that
+-- have previously run.
 getChangeHistory :: Connection -> IO [ChangeHistory]
 getChangeHistory conn = query_ conn changeHistoryQ
