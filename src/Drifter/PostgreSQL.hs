@@ -109,7 +109,7 @@ findNext :: [ChangeHistory] -> [Change PGMigration] -> IO [Change PGMigration]
 findNext [] cs = return cs
 findNext (h:hs) (c:cs)
   | (histName h) == (changeName c) = do
-    putStrLn $ "Skipping: " ++ show (changeName c)
+    putStrLn $ "Skipping: " ++ show (changeNameText (changeName c))
     findNext hs cs
   | otherwise = return (c:cs)
 findNext _ _ = do
@@ -170,6 +170,7 @@ runMigrations conn changes = do
 
 -------------------------------------------------------------------------------
 -- | Check the schema_migrations table for all the migrations that
--- have previously run.
+-- have previously run. This is run internally by 'runMigrations' to
+-- determine which migrations to run.
 getChangeHistory :: Connection -> IO [ChangeHistory]
 getChangeHistory conn = query_ conn changeHistoryQ
