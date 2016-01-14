@@ -76,6 +76,7 @@ script:
  - cabal test
  # - cabal check # old cabal versions don't like -Werror even though its defaulted False
  - cabal sdist   # tests that a source-distribution can be generated
+ - cabal install && cabal exec ghc -- examples/*.hs
 
 # Check that the resulting source distribution can be built & installed.
 # If there are no other `.tar.gz` files in `dist`, this can be even simpler:

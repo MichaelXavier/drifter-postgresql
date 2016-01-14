@@ -1,7 +1,9 @@
 name:                drifter-postgresql
 version:             0.0.1
 synopsis:            PostgreSQL support for the drifter schema migration tool
-description:         Support for postgresql-simple Query migrations as well as arbitrary Haskell IO functions.
+description:         Support for postgresql-simple Query migrations as well as
+                     arbitrary Haskell IO functions. Be sure to check the
+                     examples dir for a usage example.
 license:             MIT
 license-file:        LICENSE
 author:              Michael Xavier
@@ -13,6 +15,7 @@ tested-with:   GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.1
 extra-source-files:
   README.md
   changelog.md
+  examples/Example.hs
 
 flag lib-Werror
   default: False
