@@ -16,6 +16,8 @@ extra-source-files:
   README.md
   changelog.md
   examples/Example.hs
+homepage:           http://github.com/michaelxavier/drifter-postgresql
+bug-reports:        http://github.com/michaelxavier/drifter-postgresql/issues
 
 flag lib-Werror
   default: False
