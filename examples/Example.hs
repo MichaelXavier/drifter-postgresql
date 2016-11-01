@@ -35,7 +35,7 @@ createTable = Change { changeName = ChangeName "create table"
                      -- we'll have changeSequence sort out our dependencies
                      , changeDependencies = []
                      -- Query is a monoid, we can 'mappend' or even 'mconcat' them
-                     , changeMethod = MigrationQuery (q1 <> q2)
+                     , changeMethod = MigrationQueryTransaction (q1 <> q2)
                      }
   where q1 = "CREATE TABLE foo ( name pgtext );"
         q2 = "CREATE TABLE bar ( name pgtext );"

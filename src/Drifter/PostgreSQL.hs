@@ -15,7 +15,7 @@ module Drifter.PostgreSQL
     ) where
 
 -------------------------------------------------------------------------------
-import           Control.Applicative
+import           Control.Applicative as A
 import           Control.Exception
 import           Control.Monad
 import           Control.Monad.Trans
@@ -34,6 +34,14 @@ data PGMigration
 
 data instance Method PGMigration = MigrationQuery Query
                                  -- ^ Run a query against the database
+                                 -- without a transaction. This is
+                                 -- useful for changes that can't be
+                                 -- transactional like concurrent
+                                 -- indexing.
+                                 | MigrationQueryTransaction Query
+                                 -- ^ Run a query in a
+                                 -- transaction. You should use this
+                                 -- most of the time.
                                  | MigrationCode (Connection -> IO (Either String ()))
                                  -- ^ Run any arbitrary IO code
 
@@ -69,7 +77,7 @@ instance Ord ChangeHistory where
 
 
 instance FromRow ChangeHistory where
-    fromRow = ChangeHistory <$> field
+    fromRow = ChangeHistory A.<$> field
                             <*> (ChangeName <$> field)
                             <*> field
                             <*> field
@@ -128,6 +136,8 @@ migrateChange c ch@Change{..} = do
 
 -------------------------------------------------------------------------------
 runMethod :: Connection -> Method PGMigration -> EitherT String IO ()
+runMethod c (MigrationQueryTransaction q) =
+  void $ EitherT $ (Right <$> withTransaction c (execute_ c q)) `catches` errorHandlers
 runMethod c (MigrationQuery q) =
   void $ EitherT $ (Right <$> execute_ c q) `catches` errorHandlers
 runMethod c (MigrationCode f) =
