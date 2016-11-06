@@ -5,3 +5,4 @@ dist/
 *.o
 *.swp
 .stack-work
+examples/Example
