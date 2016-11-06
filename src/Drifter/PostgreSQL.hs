@@ -156,7 +156,12 @@ errorHandlers = [ Handler (\(ex::SqlError) -> return $ Left $ show ex)
 -- | Takes the list of all migrations, removes the ones that have
 -- already run and runs them. Use this instead of 'migrate'.
 runMigrations :: Connection -> [Change PGMigration] -> IO (Either String ())
-runMigrations conn changes = do
+runMigrations conn unorderedChanges = do
+
+  -- `migrate` will resolve the order before running the migrations, so we need them to be
+  -- in that same order when we determine what migrations (if any) need to happen next.
+  let changes = resolveDependencyOrder unorderedChanges
+
   void $ execute_ conn bootstrapQ
   hist <- getChangeHistory conn
   remainingChanges <- findNext hist changes
