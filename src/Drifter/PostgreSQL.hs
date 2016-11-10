@@ -12,6 +12,7 @@ module Drifter.PostgreSQL
     , ChangeHistory(..)
     , runMigrations
     , getChangeHistory
+    , getChangeNameHistory
     ) where
 
 -------------------------------------------------------------------------------
@@ -20,6 +21,8 @@ import           Control.Exception
 import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Either
+import           Data.Set (Set)
+import qualified Data.Set as Set
 import           Data.Time
 import           Database.PostgreSQL.Simple
 import           Database.PostgreSQL.Simple.FromField
@@ -38,12 +41,15 @@ data instance Method PGMigration = MigrationQuery Query
                                  -- ^ Run any arbitrary IO code
 
 
-data instance DBConnection PGMigration = DBConnection Connection
+data instance DBConnection PGMigration = DBConnection PGMigrationConnection
+
+
+data PGMigrationConnection = PGMigrationConnection (Set ChangeName) Connection
 
 
 instance Drifter PGMigration where
-  migrateSingle (DBConnection conn) change = do
-    runEitherT $ migrateChange conn change
+  migrateSingle (DBConnection migrationConn) change = do
+    runEitherT $ migrateChange migrationConn change
 
 
 -------------------------------------------------------------------------------
@@ -99,31 +105,26 @@ changeHistoryQ =
 
 
 -------------------------------------------------------------------------------
+changeNameHistoryQ :: Query
+changeNameHistoryQ =
+  "SELECT name FROM schema_migrations ORDER BY id;"
+
+
+-------------------------------------------------------------------------------
 insertLogQ :: Query
 insertLogQ =
   "INSERT INTO schema_migrations (name, description, time) VALUES (?, ?, ?);"
 
 
 -------------------------------------------------------------------------------
-findNext :: [ChangeHistory] -> [Change PGMigration] -> IO [Change PGMigration]
-findNext [] cs = return cs
-findNext (h:hs) (c:cs)
-  | (histName h) == (changeName c) = do
-    putStrLn $ "Skipping: " ++ show (changeNameText (changeName c))
-    findNext hs cs
-  | otherwise = return (c:cs)
-findNext _ _ = do
-  putStrLn "Change Set Exhausted"
-  return []
-
-
--------------------------------------------------------------------------------
-migrateChange :: Connection -> Change PGMigration -> EitherT String IO ()
-migrateChange c ch@Change{..} = do
-  runMethod c changeMethod
-
-  logChange c ch
-  lift $ putStrLn $ "Committed: " ++ show changeName
+migrateChange :: PGMigrationConnection -> Change PGMigration -> EitherT String IO ()
+migrateChange (PGMigrationConnection hist c) ch@Change{..} = do
+  if Set.member changeName hist
+    then lift $ putStrLn $ "Skipping: " ++ show (changeNameText changeName)
+    else do
+      runMethod c changeMethod
+      logChange c ch
+      lift $ putStrLn $ "Committed: " ++ show changeName
 
 
 -------------------------------------------------------------------------------
@@ -153,24 +154,40 @@ errorHandlers = [ Handler (\(ex::SqlError) -> return $ Left $ show ex)
 
 
 -------------------------------------------------------------------------------
+-- | Takes a connection and builds the state to thread throughout the migration.
+-- This includes bootstrapping the migration tables and collecting all the
+-- migrations that have already been committed.
+makePGMigrationConnection :: Connection -> IO PGMigrationConnection
+makePGMigrationConnection conn = do
+  void $ execute_ conn bootstrapQ
+  hist <- getChangeNameHistory conn
+  return $ PGMigrationConnection (Set.fromList hist) conn
+
+
+-------------------------------------------------------------------------------
 -- | Takes the list of all migrations, removes the ones that have
 -- already run and runs them. Use this instead of 'migrate'.
 runMigrations :: Connection -> [Change PGMigration] -> IO (Either String ())
 runMigrations conn changes = do
-  void $ execute_ conn bootstrapQ
-  hist <- getChangeHistory conn
-  remainingChanges <- findNext hist changes
   begin conn
-  res <- migrate (DBConnection conn) remainingChanges `onException` rollback conn
+  migrationConn <- makePGMigrationConnection conn
+  res <- migrate (DBConnection migrationConn) changes `onException` rollback conn
   case res of
     Right _ -> commit conn
-    Left _ -> rollback conn
+    Left  _ -> rollback conn
   return res
 
 
 -------------------------------------------------------------------------------
--- | Check the schema_migrations table for all the migrations that
--- have previously run. This is run internally by 'runMigrations' to
--- determine which migrations to run.
+-- | Get all changes from schema_migrations table for all the migrations that
+-- have previously run.
 getChangeHistory :: Connection -> IO [ChangeHistory]
 getChangeHistory conn = query_ conn changeHistoryQ
+
+
+-------------------------------------------------------------------------------
+-- | Get just the names of all changes from schema_migrations for migrations
+-- that have previously run.
+getChangeNameHistory :: Connection -> IO [ChangeName]
+getChangeNameHistory conn = fmap (\(Only name) -> ChangeName name)
+                        <$> query_ conn changeNameHistoryQ
