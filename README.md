@@ -1,4 +1,5 @@
 # drifter-postgresql
+[![Build Status](https://travis-ci.org/MichaelXavier/drifter-postgresql.svg?branch=master)](https://travis-ci.org/MichaelXavier/drifter-postgresql)
 
 PostgreSQL support for the drifter schema migration tool
 
