@@ -6,7 +6,7 @@ module Main
 
 
 -------------------------------------------------------------------------------
-import           Control.Applicative
+import           Control.Applicative              as A
 import           Control.Monad
 import           Data.IORef
 import           Data.Text                        (Text)
@@ -65,7 +65,7 @@ c1 = Change (ChangeName "c1") (Just "c1 migration") [] meth
 c2 :: IORef Int -> Change PGMigration
 c2 ref = Change (ChangeName "c2") (Just "c2 migration") [changeName c1] meth
   where
-    meth = MigrationCode (\_ -> Right <$> modifyIORef' ref succ)
+    meth = MigrationCode (\_ -> Right A.<$> modifyIORef' ref succ)
 
 
 -------------------------------------------------------------------------------

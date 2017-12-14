@@ -16,13 +16,13 @@ module Drifter.PostgreSQL
     ) where
 
 -------------------------------------------------------------------------------
-import           Control.Applicative
+import           Control.Applicative                  as A
 import           Control.Exception
 import           Control.Monad
 import           Control.Monad.Trans
-import           Control.Monad.Trans.Either
-import           Data.Set (Set)
-import qualified Data.Set as Set
+import           Control.Monad.Trans.Except
+import           Data.Set                             (Set)
+import qualified Data.Set                             as Set
 import           Data.Time
 import           Database.PostgreSQL.Simple
 import           Database.PostgreSQL.Simple.FromField
@@ -49,7 +49,7 @@ data PGMigrationConnection = PGMigrationConnection (Set ChangeName) Connection
 
 instance Drifter PGMigration where
   migrateSingle (DBConnection migrationConn) change = do
-    runEitherT $ migrateChange migrationConn change
+    runExceptT $ migrateChange migrationConn change
 
 
 -------------------------------------------------------------------------------
@@ -117,7 +117,7 @@ insertLogQ =
 
 
 -------------------------------------------------------------------------------
-migrateChange :: PGMigrationConnection -> Change PGMigration -> EitherT String IO ()
+migrateChange :: PGMigrationConnection -> Change PGMigration -> ExceptT String IO ()
 migrateChange (PGMigrationConnection hist c) ch@Change{..} = do
   if Set.member changeName hist
     then lift $ putStrLn $ "Skipping: " ++ show (changeNameText changeName)
@@ -128,18 +128,18 @@ migrateChange (PGMigrationConnection hist c) ch@Change{..} = do
 
 
 -------------------------------------------------------------------------------
-runMethod :: Connection -> Method PGMigration -> EitherT String IO ()
+runMethod :: Connection -> Method PGMigration -> ExceptT String IO ()
 runMethod c (MigrationQuery q) =
-  void $ EitherT $ (Right <$> execute_ c q) `catches` errorHandlers
+  void $ ExceptT $ (Right <$> execute_ c q) `catches` errorHandlers
 runMethod c (MigrationCode f) =
-  EitherT $ f c `catches` errorHandlers
+  ExceptT $ f c `catches` errorHandlers
 
 
   -------------------------------------------------------------------------------
-logChange :: Connection -> Change PGMigration -> EitherT String IO ()
+logChange :: Connection -> Change PGMigration -> ExceptT String IO ()
 logChange c Change{..} = do
     now <- lift getCurrentTime
-    void $ EitherT $ (Right <$> go now) `catches` errorHandlers
+    void $ ExceptT $ (Right <$> go now) `catches` errorHandlers
   where
     go now = execute c insertLogQ (changeNameText changeName, changeDescription, now)
 
@@ -189,5 +189,5 @@ getChangeHistory conn = query_ conn changeHistoryQ
 -- | Get just the names of all changes from schema_migrations for migrations
 -- that have previously run.
 getChangeNameHistory :: Connection -> IO [ChangeName]
-getChangeNameHistory conn = fmap (\(Only name) -> ChangeName name)
-                        <$> query_ conn changeNameHistoryQ
+getChangeNameHistory conn = fmap (\(Only nm) -> ChangeName nm)
+                        A.<$> query_ conn changeNameHistoryQ
