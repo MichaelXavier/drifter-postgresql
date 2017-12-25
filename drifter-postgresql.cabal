@@ -1,5 +1,5 @@
 name:                drifter-postgresql
-version:             0.2.0
+version:             0.2.1
 synopsis:            PostgreSQL support for the drifter schema migration tool
 description:         Support for postgresql-simple Query migrations as well as
                      arbitrary Haskell IO functions. Be sure to check the

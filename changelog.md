@@ -1,3 +1,8 @@
+0.2.1
+* Update tested-with.
+* Set lower bound on base.
+* Add transformers-compat.
+
 0.2.0
 * Switch from EitherT to ExceptT.
 
