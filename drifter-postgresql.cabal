@@ -30,9 +30,9 @@ library
                      , containers
                      , drifter >= 0.2
                      , time
-                     , either
                      , mtl
                      , transformers
+                     , transformers-compat >=0.2
   hs-source-dirs:      src
   default-language:    Haskell2010
 
