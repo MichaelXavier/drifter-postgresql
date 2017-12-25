@@ -11,7 +11,7 @@ maintainer:          michael@michaelxavier.net
 category:            Database
 build-type:          Simple
 cabal-version:       >=1.10
-tested-with:   GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.1
+tested-with:         GHC == 7.10.3, GHC == 8.0.2, GHC == 8.2.2
 extra-source-files:
   README.md
   changelog.md
@@ -25,7 +25,7 @@ flag lib-Werror
 
 library
   exposed-modules:   Drifter.PostgreSQL
-  build-depends:       base >=4.5 && <5
+  build-depends:       base >=4.8 && <5
                      , postgresql-simple >= 0.2
                      , containers
                      , drifter >= 0.2
